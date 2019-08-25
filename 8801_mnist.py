@@ -10,59 +10,14 @@ from IPython.display import Image
 from IPython import display
 import matplotlib.pyplot as plt
 
-app = Flask(__name__)
 
-@app.route('/')
-def index():
-    return 'DDUKDDAK-Gpu-Server MNIST running on port 8801!'
-
-@app.route('/run', methods=['POST'])
-def run():
-    code = request.form['code']
-
-    params = code.split(';')
-
-    _train = None
-    _test = None
-    _learn = None
-    _epoch = None
-    _activation = []
-
-    for i in params:
-        if i.find('training_num') != -1:
-            ii = i.find('=')
-            num = i[ii+2:-1]
-            _train = int(num)
-        elif i.find('test_num') != -1:
-            ii = i.find('=')
-            num = i[ii+2:-1]
-            _test = int(num)
-        elif i.find('learning_rate') != -1:
-            ii = i.find('=')
-            num = i[ii+2:-1]
-            _learn = float(num)
-        elif i.find('num_epochs') != -1:
-            ii = i.find('=')
-            num = i[ii+2:-1]
-            _epoch = int(num)
-        elif i.find('LogSigmoid') != -1:
-            _activation.append('L')
-        elif i.find('ReLU') != -1:
-            _activation.append('R')
-
-    print('MNIST params : ' + str(_train) + ' ' + str(_test) + ' ' + str(_learn) + ' ' + str(_epoch) + ' ' + str(_activation))
-
-    training_num = _train
-    test_num = _test
-    learning_rate = _learn
-    num_epochs = _epoch
-
-    # ML HERE ======================================================================================================================
-
+def code_mnist(training_num, test_num, learning_rate, num_epochs, _activation):
     batch_size = 10
-    trn_dataset = datasets.MNIST('./8801_mnist_data/', download=True, train=True, transform=transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]))
+    trn_dataset = datasets.MNIST('./data/', download=True, train=True, transform=transforms.Compose(
+        [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]))
     trn_loader = torch.utils.data.DataLoader(trn_dataset, batch_size=batch_size, shuffle=True)
-    val_dataset = datasets.MNIST("./8801_mnist_data/", download=False, train=False, transform=transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]))
+    val_dataset = datasets.MNIST("./data/", download=False, train=False, transform=transforms.Compose(
+        [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]))
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, shuffle=True)
 
     num_batches = len(trn_loader)
@@ -94,7 +49,7 @@ def run():
             pool2 = nn.MaxPool2d(2)
 
             if _activation[0] == 'R' and _activation[1] == 'R':
-                self.conv_module = nn.Sequential( conv1, nn.ReLU(), pool1, conv2, nn.ReLU(), pool2 )
+                self.conv_module = nn.Sequential(conv1, nn.ReLU(), pool1, conv2, nn.ReLU(), pool2)
             elif _activation[0] == 'R' and _activation[1] == 'L':
                 self.conv_module = nn.Sequential(conv1, nn.ReLU(), pool1, conv2, nn.LogSigmoid(), pool2)
             elif _activation[0] == 'L' and _activation[1] == 'R':
@@ -107,13 +62,13 @@ def run():
             fc3 = nn.Linear(84, 10)
 
             if _activation[2] == 'R' and _activation[3] == 'R':
-                self.fc_module = nn.Sequential( fc1, nn.ReLU(), fc2, nn.ReLU(), fc3 )
+                self.fc_module = nn.Sequential(fc1, nn.ReLU(), fc2, nn.ReLU(), fc3)
             elif _activation[2] == 'R' and _activation[3] == 'L':
-                self.fc_module = nn.Sequential( fc1, nn.ReLU(), fc2, nn.LogSigmoid(), fc3 )
+                self.fc_module = nn.Sequential(fc1, nn.ReLU(), fc2, nn.LogSigmoid(), fc3)
             elif _activation[2] == 'L' and _activation[3] == 'R':
-                self.fc_module = nn.Sequential( fc1, nn.LogSigmoid(), fc2, nn.ReLU(), fc3 )
+                self.fc_module = nn.Sequential(fc1, nn.LogSigmoid(), fc2, nn.ReLU(), fc3)
             elif _activation[2] == 'L' and _activation[3] == 'L':
-                self.fc_module = nn.Sequential( fc1, nn.LogSigmoid(), fc2, nn.LogSigmoid(), fc3 )
+                self.fc_module = nn.Sequential(fc1, nn.LogSigmoid(), fc2, nn.LogSigmoid(), fc3)
 
             if use_cuda:
                 self.conv_module = self.conv_module.cuda()
@@ -227,9 +182,55 @@ def run():
 
     print("acc: {:.2f}".format(corr_num / total_num * 100))
 
-    # ML HERE ======================================================================================================================
-
     return str(corr_num / total_num * 100)
+
+
+app = Flask(__name__)
+
+
+@app.route('/')
+def index():
+    return 'DDUKDDAK-Gpu-Server MNIST running on port 8801!'
+
+
+@app.route('/run', methods=['POST'])
+def run():
+    code = request.form['code']
+
+    params = code.split(';')
+
+    _train = None
+    _test = None
+    _learn = None
+    _epoch = None
+    _activation = []
+
+    for i in params:
+        if i.find('training_num') != -1:
+            ii = i.find('=')
+            num = i[ii+2:-1]
+            _train = int(num)
+        elif i.find('test_num') != -1:
+            ii = i.find('=')
+            num = i[ii+2:-1]
+            _test = int(num)
+        elif i.find('learning_rate') != -1:
+            ii = i.find('=')
+            num = i[ii+2:-1]
+            _learn = float(num)
+        elif i.find('num_epochs') != -1:
+            ii = i.find('=')
+            num = i[ii+2:-1]
+            _epoch = int(num)
+        elif i.find('LogSigmoid') != -1:
+            _activation.append('L')
+        elif i.find('ReLU') != -1:
+            _activation.append('R')
+
+    print('MNIST params : ' + str(_train) + ' ' + str(_test) + ' ' + str(_learn) + ' ' + str(_epoch) + ' ' + str(_activation))
+
+    return code_mnist(_train, _test, _learn, _epoch, _activation)
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8801)
