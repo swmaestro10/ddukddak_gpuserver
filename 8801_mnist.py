@@ -1,5 +1,5 @@
-from flask import Flask, request
-
+from flask import Flask, request, session
+from flask_socketio import SocketIO, emit
 import itertools
 import torch
 import torch.nn as nn
@@ -158,6 +158,7 @@ def code_mnist(training_num, test_num, learning_rate, num_epochs, _activation):
                 print("epoch: {}/{} | step: {}/{} | trn loss: {:.4f} | val loss: {:.4f}".format(
                     epoch + 1, num_epochs, i + 1, num_batches, trn_loss / 100, val_loss / len(val_loader)
                 ))
+                emit('response', {'data': 2, 'result': f'복습 {epoch + 1} / trn loss: {trn_loss / 100} | val loss: {val_loss / len(val_loader)}'})
 
                 trn_loss_list.append(trn_loss / 100)
                 val_loss_list.append(val_loss / len(val_loader))
@@ -181,21 +182,41 @@ def code_mnist(training_num, test_num, learning_rate, num_epochs, _activation):
             total_num += val_label.size(0)
 
     print("acc: {:.2f}".format(corr_num / total_num * 100))
+    emit('response', {'data': 2, 'result': f'Accuracy : {corr_num / total_num * 100}'})
 
     return str(corr_num / total_num * 100)
 
 
 app = Flask(__name__)
+socketio = SocketIO(app)
 
 
-@app.route('/')
-def index():
-    return 'DDUKDDAK-Gpu-Server MNIST running on port 8801!'
+@socketio.on('connect', namespace='/code')
+def connect():
+    emit('response', {'data':0, 'status':1}) # connected
 
 
-@app.route('/run', methods=['POST'])
-def run():
-    code = request.form['code']
+@socketio.on('disconnect', namespace='/code')
+def disconnect():
+    session.clear()
+
+
+@socketio.on('start', namespace='/code')
+def start(data):
+    session['id'] = data['sessionId']
+
+    print(f"{session['id']} Started!")
+    emit('response', {'data':1, 'text':f"{session['id']} Started!"})
+
+
+@socketio.on('run', namespace='/code')
+def run(data):
+    code = data['code']
+    img = data['img']
+
+    f = open('temp_' + session['id'] + '.png', 'wb')
+    f.write(img)
+    f.close()
 
     params = code.split(';')
 
@@ -227,10 +248,14 @@ def run():
         elif i.find('ReLU') != -1:
             _activation.append('R')
 
-    print('MNIST params : ' + str(_train) + ' ' + str(_test) + ' ' + str(_learn) + ' ' + str(_epoch) + ' ' + str(_activation))
+    print(f'MNIST params : {_train} {_test} {_learn} {_epoch} {_activation}')
+    emit('response', {'data': 1, 'text': f'MNIST params : {_train} {_test} {_learn} {_epoch} {_activation}'})
 
-    return code_mnist(_train, _test, _learn, _epoch, _activation)
+    code_mnist(_train, _test, _learn, _epoch, _activation)
+
+    print(f"{session['id']} Closed!")
+    emit('response', {'data': 0, 'status': 2}) # close connection
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8801)
+    socketio.run(app, host='0.0.0.0', port=8801)
