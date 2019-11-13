@@ -158,7 +158,7 @@ def code_mnist(training_num, test_num, learning_rate, num_epochs, _activation):
                 print("epoch: {}/{} | step: {}/{} | trn loss: {:.4f} | val loss: {:.4f}".format(
                     epoch + 1, num_epochs, i + 1, num_batches, trn_loss / 100, val_loss / len(val_loader)
                 ))
-                emit('response', {'data': 2, 'result': f'복습 {epoch + 1} / trn loss: {trn_loss / 100} | val loss: {val_loss / len(val_loader)}'})
+                emit('response', {'data': 2, 'result': f'복습 {epoch + 1} : 학습 loss {(trn_loss / 100):.4f}, 검증 loss {(val_loss / len(val_loader)):.4f}'})
 
                 trn_loss_list.append(trn_loss / 100)
                 val_loss_list.append(val_loss / len(val_loader))
@@ -182,7 +182,7 @@ def code_mnist(training_num, test_num, learning_rate, num_epochs, _activation):
             total_num += val_label.size(0)
 
     print("acc: {:.2f}".format(corr_num / total_num * 100))
-    emit('response', {'data': 2, 'result': f'Accuracy : {corr_num / total_num * 100}'})
+    emit('response', {'data': 2, 'result': f'최종 정확도 : {corr_num / total_num * 100}%'})
 
     return str(corr_num / total_num * 100)
 
@@ -206,17 +206,17 @@ def start(data):
     session['id'] = data['sessionId']
 
     print(f"{session['id']} Started!")
-    emit('response', {'data':1, 'text':f"{session['id']} Started!"})
+    # emit('response', {'data':1, 'text':f"{session['id']} Started!"})
 
 
 @socketio.on('run', namespace='/code')
 def run(data):
     code = data['code']
-    img = data['img']
 
-    f = open('temp_' + session['id'] + '.png', 'wb')
-    f.write(img)
-    f.close()
+    # img = data['img']
+    # f = open('temp_' + session['id'] + '.png', 'wb')
+    # f.write(img)
+    # f.close()
 
     params = code.split(';')
 
@@ -249,9 +249,13 @@ def run(data):
             _activation.append('R')
 
     print(f'MNIST params : {_train} {_test} {_learn} {_epoch} {_activation}')
-    emit('response', {'data': 1, 'text': f'MNIST params : {_train} {_test} {_learn} {_epoch} {_activation}'})
+    # emit('response', {'data': 1, 'text': f'MNIST params : {_train} {_test} {_learn} {_epoch} {_activation}'})
+
+    emit('response', {'data': 2, 'result': f'시작되었습니다.'})
 
     code_mnist(_train, _test, _learn, _epoch, _activation)
+
+    emit('response', {'data': 2, 'result': f'완료되었습니다.'})
 
     print(f"{session['id']} Closed!")
     emit('response', {'data': 0, 'status': 2}) # close connection

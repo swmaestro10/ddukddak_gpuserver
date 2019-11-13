@@ -41,11 +41,9 @@ def imshow(tensor, title=None):
 
 
 class ContentLoss(nn.Module):
-
     def __init__(self, target,):
         super(ContentLoss, self).__init__()
         self.target = target.detach()
-
     def forward(self, input):
         self.loss = F.mse_loss(input, self.target)
         return input
@@ -67,6 +65,7 @@ class StyleLoss(nn.Module):
         self.loss = F.mse_loss(G, self.target)
         return input
 
+
 cnn = models.vgg19(pretrained=True).features.to(device).eval()
 
 cnn_normalization_mean = torch.tensor([0.485, 0.456, 0.406]).to(device)
@@ -78,7 +77,6 @@ class Normalization(nn.Module):
         super(Normalization, self).__init__()
         self.mean = torch.tensor(mean).view(-1, 1, 1)
         self.std = torch.tensor(std).view(-1, 1, 1)
-
     def forward(self, img):
         return (img - self.mean) / self.std
 
@@ -135,16 +133,12 @@ def get_style_model_and_losses(cnn, normalization_mean, normalization_std, style
     return model, style_losses, content_losses
 
 
-
-
 def get_input_optimizer(input_img):
     optimizer = optim.LBFGS([input_img.requires_grad_()])
     return optimizer
 
 
-def run_style_transfer(cnn, normalization_mean, normalization_std,
-                       content_img, style_img, input_img, num_steps=200,  # 300
-                       style_weight=1000000, content_weight=1):
+def run_style_transfer(cnn, normalization_mean, normalization_std, content_img, style_img, input_img, num_steps=200, style_weight=1000000, content_weight=1):
     print('Building the style transfer model..')
     model, style_losses, content_losses = get_style_model_and_losses(cnn, normalization_mean, normalization_std, style_img, content_img)
     optimizer = get_input_optimizer(input_img)
